@@ -1,7 +1,7 @@
 FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /app
 COPY . .
-RUN mvn -DskipTests clean package
+RUN mvn -DskipTests clean package spring-boot:repackage
 
 # napravi app.jar tako da UZME boot jar, a ne original-*.jar
 RUN set -eux; \
