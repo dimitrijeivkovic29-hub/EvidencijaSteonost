@@ -62,7 +62,13 @@ public class GrloController {
         g.setBroj(input.getBroj());
         g.setDatumRodjenja(input.getDatumRodjenja());
         g.setLaktacija(input.getLaktacija());
-        g.setPoslednjeTeljenje(input.getLaktacija() > 0 ? input.getPoslednjeTeljenje() : null);
+        // Ako se unese/izmeni poslednje teljenje ručno kroz "Izmenu grla",
+        // tretiramo to kao teljenje i resetujemo broj osemenjavanja.
+        var novoTeljenje = (input.getLaktacija() > 0) ? input.getPoslednjeTeljenje() : null;
+        if(novoTeljenje != null && (g.getPoslednjeTeljenje() == null || !novoTeljenje.equals(g.getPoslednjeTeljenje()))) {
+            g.setInseminationCount(0);
+        }
+        g.setPoslednjeTeljenje(novoTeljenje);
         return service.sacuvajGrlo(g);
     }
 

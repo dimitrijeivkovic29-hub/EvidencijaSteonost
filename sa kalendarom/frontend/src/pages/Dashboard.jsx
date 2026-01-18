@@ -45,6 +45,12 @@ export default function Dashboard(){
   const [evBik, setEvBik] = useState("");
   const [evForce, setEvForce] = useState(false);
 
+  function isoTime(iso){
+    if(!iso) return null;
+    const t = Date.parse(iso);
+    return isNaN(t) ? null : t;
+  }
+
   function applySort(list, key, dir){
     const mul = dir==='asc' ? 1 : -1;
     return [...list].sort((a,b)=>{
@@ -162,7 +168,13 @@ export default function Dashboard(){
     setEvForce(false);
     setShowEventModal(true);
   }
-  function closeEvent(){ setShowEventModal(false); setEventGrloId(null); setEvGrlo(null); }
+  function closeEvent(){
+    setShowEventModal(false);
+    setEventGrloId(null);
+    setEvGrlo(null);
+    // Ako je otvoren i modal za "Izmena grla", zatvori ga kada izađeš iz dodavanja događaja.
+    closeModal();
+  }
 
   async function submitEvent(e){
     e.preventDefault();
@@ -185,6 +197,16 @@ export default function Dashboard(){
       }
     }
   }
+
+  // U "Izmeni grla" prikazuj samo događaje od poslednjeg teljenja (ako postoji).
+  const lastTelTime = isoTime(g?.poslednjeTeljenje);
+  const shownEvents = useMemo(()=>{
+    if(!lastTelTime) return eventList || [];
+    return (eventList || []).filter(ev => {
+      const t = isoTime(ev?.datum);
+      return t != null && t >= lastTelTime;
+    });
+  }, [eventList, lastTelTime]);
 
   return (
     <div className="p-4">
@@ -332,7 +354,9 @@ export default function Dashboard(){
 <table className="w-full text-sm">
                   <thead><tr className="bg-gray-50"><th className="p-2 text-left">Datum</th><th className="p-2 text-left">Tip</th><th className="p-2 text-left">Bik</th><th className="p-2 text-right">Akcije</th></tr></thead>
                   <tbody>
-                    {eventList.sort((a,b)=> (new Date(b.datum||0)) - (new Date(a.datum||0))).map(ev => (
+                    {shownEvents
+                      .sort((a,b)=> (new Date(b.datum||0)) - (new Date(a.datum||0)))
+                      .map(ev => (
                       <tr key={ev.id} className="border-b">
                         <td className="p-2">{ev.datum||'-'}</td>
                         <td className="p-2">{ev.tip}</td>
@@ -342,9 +366,13 @@ export default function Dashboard(){
                         </td>
                       </tr>
                     ))}
-                    {eventList.length===0 && <tr><td className="p-2 text-gray-500" colSpan={4}>Nema događaja.</td></tr>}
+                    {shownEvents.length===0 && <tr><td className="p-2 text-gray-500" colSpan={4}>Nema događaja.</td></tr>}
                   </tbody>
                 </table>
+              </div>
+
+              <div className="mt-3 flex justify-end">
+                <button type="button" onClick={openEventFromEdit} className="px-3 py-1 rounded bg-blue-50 text-blue-700 border">Dodaj događaj</button>
               </div>
             </div>
 
