@@ -27,7 +27,8 @@ export default function Dashboard(){
   const [search, setSearch] = useState("");
 
  
-  const [openId, setOpenId] = useState(null);
+  // Modal za pregled/izmenu grla
+  const [editId, setEditId] = useState(null);
   const [g, setG] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -36,6 +37,8 @@ export default function Dashboard(){
 
   
   const [showEventModal, setShowEventModal] = useState(false);
+  const [eventGrloId, setEventGrloId] = useState(null);
+  const [evGrlo, setEvGrlo] = useState(null);
   const [evMsg, setEvMsg] = useState("");
   const [evTip, setEvTip] = useState("OSEMENJAVANJE");
   const [evDatum, setEvDatum] = useState("");
@@ -107,7 +110,7 @@ export default function Dashboard(){
   }
 
   async function openModal(id){
-    setOpenId(id);
+    setEditId(id);
     try{
       setG(await getGrlo(id));
       setEventList(await dogadjajiZaGrlo(id));
@@ -116,13 +119,13 @@ export default function Dashboard(){
       alert(e?.message || "Greška pri učitavanju grla");
     }
   }
-  function closeModal(){ setOpenId(null); setG(null); setEventList([]); }
+  function closeModal(){ setEditId(null); setG(null); setEventList([]); }
 
   async function saveModal(e){
     e.preventDefault();
     try{
       setSaving(true);
-      await updateGrlo(openId, g);
+      await updateGrlo(editId, g);
       await load();
       closeModal();
     }catch(e2){ alert(e2?.message || "Greška pri snimanju"); }
@@ -132,18 +135,15 @@ export default function Dashboard(){
   async function deleteEvent(id){
     try{
       await obrisiDogadjaj(id);
-      if(openId){ setEventList(await dogadjajiZaGrlo(openId)); }
+      if(editId){ setEventList(await dogadjajiZaGrlo(editId)); }
       await load();
     }catch(e){ alert(e?.message || "Greška pri brisanju događaja"); }
   }
 
   
   async function openEventFor(row){
-    setOpenId(row.id);
-    try{
-      const gg = await getGrlo(row.id);
-      setG(gg);
-    }catch{ }
+    setEventGrloId(row.id);
+    setEvGrlo(row);
     setEvTip("OSEMENJAVANJE");
     setEvDatum("");
     setEvBik("");
@@ -151,13 +151,24 @@ export default function Dashboard(){
     setEvForce(false);
     setShowEventModal(true);
   }
-  function closeEvent(){ setShowEventModal(false); }
+  function openEventFromEdit(){
+    if(!editId) return;
+    setEventGrloId(editId);
+    setEvGrlo({ id: editId, broj: g?.broj });
+    setEvTip("OSEMENJAVANJE");
+    setEvDatum("");
+    setEvBik("");
+    setEvMsg("");
+    setEvForce(false);
+    setShowEventModal(true);
+  }
+  function closeEvent(){ setShowEventModal(false); setEventGrloId(null); setEvGrlo(null); }
 
   async function submitEvent(e){
     e.preventDefault();
     try{
       setEvMsg("");
-      await dodajDogadjaj(openId, { tip: evTip, datum: evTip==='POTVRDJENA_STEONOST'? null : (evDatum||null), bik: evTip==='OSEMENJAVANJE'? (evBik||null) : null }, { force: evForce });
+      await dodajDogadjaj(eventGrloId, { tip: evTip, datum: evTip==='POTVRDJENA_STEONOST'? null : (evDatum||null), bik: evTip==='OSEMENJAVANJE'? (evBik||null) : null }, { force: evForce });
       setEvForce(false);
       await load();
       closeEvent();
@@ -269,7 +280,7 @@ export default function Dashboard(){
       </div>
 
       {/* EDIT MODAL */}
-      {openId && g && (
+      {editId && g && (
         <div className="fixed inset-0 bg-black/40 grid items-start place-items-center overflow-y-auto p-4 z-50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-5 max-h-[85vh] overflow-auto">
             <div className="flex items-center justify-between mb-3">
@@ -290,7 +301,8 @@ export default function Dashboard(){
                 <input className="w-full border rounded px-2 py-1" value={g.poslednjeTeljenje||''} onChange={e=>setG({...g, poslednjeTeljenje:e.target.value})}/>
               </label>
               <div className="flex items-center justify-end gap-2">
-                <button type="button" onClick={()=>{ if(confirm('Obrisati grlo?')){ deleteGrlo(openId).then(load).finally(closeModal); } }} className="px-3 py-1 rounded bg-red-50 text-red-700 border">Obriši</button>
+                <button type="button" onClick={openEventFromEdit} className="px-3 py-1 rounded bg-blue-50 text-blue-700 border">Dodaj događaj</button>
+                <button type="button" onClick={()=>{ if(confirm('Obrisati grlo?')){ deleteGrlo(editId).then(load).finally(closeModal); } }} className="px-3 py-1 rounded bg-red-50 text-red-700 border">Obriši</button>
                 <button type="submit" disabled={saving} className="px-3 py-1 rounded bg-black text-white">{saving? 'Čuvam...' : 'Snimi'}</button>
               </div>
             </form>
@@ -360,7 +372,7 @@ export default function Dashboard(){
         <div className="fixed inset-0 bg-black/40 grid items-start place-items-center overflow-y-auto p-4 z-50">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-4 max-h-[85vh] overflow-auto">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold">Novi događaj</h3>
+              <h3 className="font-semibold">Novi događaj{evGrlo?.broj ? ` – krava ${evGrlo.broj}` : ""}</h3>
               <button onClick={closeEvent} className="text-sm px-2 py-1 border rounded">Zatvori</button>
             </div>
             <form onSubmit={submitEvent} className="grid gap-3">

@@ -11,6 +11,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -42,7 +43,14 @@ public class SecurityConfig {
                         "/api/semena/**"
                 ).authenticated()
                 .anyRequest().permitAll())
-            .httpBasic(Customizer.withDefaults());
+            // Koristimo Basic auth (jer frontend šalje Authorization header),
+            // ali gasimo browser-ov "Sign in" popup tako što NE šaljemo
+            // WWW-Authenticate header.
+            .httpBasic(basic -> basic.authenticationEntryPoint((req, res, ex) -> {
+                res.setStatus(HttpStatus.UNAUTHORIZED.value());
+                res.setContentType("application/json");
+                res.getWriter().write("{\"error\":\"unauthorized\"}");
+            }));
         return http.build();
     }
 
